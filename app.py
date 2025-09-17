@@ -1,47 +1,58 @@
 import streamlit as st
 from ultralytics import YOLO
-import numpy as np
 from PIL import Image
+import numpy as np
+import tempfile
+import os
 
 # -------------------------------
-# Load YOLO model
+# Load YOLO Model
 # -------------------------------
 MODEL_PATH = "models/best.pt"
-model = YOLO(MODEL_PATH)
 
+@st.cache_resource
+def load_model():
+    return YOLO(MODEL_PATH)
+
+model = load_model()
+
+# -------------------------------
+# Streamlit UI
+# -------------------------------
 st.title("🛒 Smart Retail AI - Shelf Monitoring")
 st.write("Upload an image of a supermarket shelf, and the AI will detect missing/misplaced products.")
 
-# -------------------------------
-# Upload Image
-# -------------------------------
+# File uploader
 uploaded_file = st.file_uploader("Upload Shelf Image", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    # Convert file to image
+    # Read and display image
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Shelf Image", use_container_width=True)
 
-    st.write("🔍 Running AI model on the image...")
+    # Save to temp file for YOLO
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+        image.save(tmp_file.name)
+        temp_path = tmp_file.name
 
-    # -------------------------------
-    # Run YOLO inference
-    # -------------------------------
-    results = model.predict(source=np.array(image))
+    st.write("🔍 Running detection...")
 
-    # Annotated image with detections
-    annotated_img = results[0].plot()  # YOLO auto-draws boxes
-    st.image(annotated_img, caption="Detections", use_container_width=True)
+    # Run YOLO prediction
+    results = model.predict(source=temp_path, conf=0.4, save=False)
 
-    # -------------------------------
-    # Stock Count
-    # -------------------------------
-    class_names = model.names
-    counts = {}
-    for box in results[0].boxes:
-        cls_id = int(box.cls)
-        cls_name = class_names[cls_id]
-        counts[cls_name] = counts.get(cls_name, 0) + 1
+    # Plot detections on image
+    res_plotted = results[0].plot()  # numpy array (BGR)
+    res_rgb = Image.fromarray(res_plotted[..., ::-1])  # convert to RGB for Streamlit
 
-    st.subheader("📊 Stock Count")
-    st.json(counts)
+    st.image(res_rgb, caption="AI Detection Result", use_container_width=True)
+
+    # Show counts
+    counts = results[0].boxes.cls.cpu().numpy()
+    names = model.names
+    detected_classes = [names[int(c)] for c in counts]
+
+    st.subheader("📊 Detected Products:")
+    if detected_classes:
+        st.write({c: detected_classes.count(c) for c in set(detected_classes)})
+    else:
+        st.write("⚠️ No products detected.")
