@@ -1,36 +1,22 @@
 import subprocess, sys
 
-# Always ensure only headless OpenCV is present
+# Ensure only headless OpenCV is installed (fixes libGL.so.1 error)
 subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python"], check=False)
 subprocess.run([sys.executable, "-m", "pip", "install", "-U", "opencv-python-headless"], check=False)
 
 import streamlit as st
 import os
-import sys
 import tempfile
 import requests
 import numpy as np
 from PIL import Image
-
-# -------------------------------
-# Force headless OpenCV (fixes libGL.so.1 error on Streamlit Cloud)
-# -------------------------------
-os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
-try:
-    import cv2
-except ImportError:
-    import subprocess
-    subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python"])
-    subprocess.run([sys.executable, "-m", "pip", "install", "opencv-python-headless"])
-    import cv2
-
 from ultralytics import YOLO
 
 # -------------------------------
 # Handle resource paths
 # -------------------------------
 def resource_path(relative_path):
-    """Get absolute path to resource, works both for dev and PyInstaller exe"""
+    """Get absolute path to resource, works both for dev + PyInstaller exe"""
     if hasattr(sys, "_MEIPASS"):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
