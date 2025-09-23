@@ -4,5 +4,4 @@ requests
 numpy
 torch==1.13.1
 ultralytics==8.2.103
-opencv-python-headless
-
+opencv-python-headless==4.8.0.74
