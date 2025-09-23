@@ -3,5 +3,5 @@ Pillow
 requests
 numpy
 torch==1.13.1
-ultralytics==8.0.20
+ultralytics==8.2.103
 opencv-python-headless==4.10.0.84
