@@ -1,9 +1,7 @@
 streamlit
 Pillow
 requests
-numpy
+numpy==1.26.4
 torch==1.13.1
 ultralytics==8.2.103
 opencv-python-headless==4.8.0.74
-# prevent normal opencv from being installed
-opencv-python==0.0.0
