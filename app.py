@@ -1,17 +1,36 @@
+import subprocess, sys
+
+# Always ensure only headless OpenCV is present
+subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python"], check=False)
+subprocess.run([sys.executable, "-m", "pip", "install", "-U", "opencv-python-headless"], check=False)
+
 import streamlit as st
-from ultralytics import YOLO
-from PIL import Image
-import numpy as np
-import tempfile
 import os
 import sys
+import tempfile
 import requests
+import numpy as np
+from PIL import Image
+
+# -------------------------------
+# Force headless OpenCV (fixes libGL.so.1 error on Streamlit Cloud)
+# -------------------------------
+os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
+try:
+    import cv2
+except ImportError:
+    import subprocess
+    subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python"])
+    subprocess.run([sys.executable, "-m", "pip", "install", "opencv-python-headless"])
+    import cv2
+
+from ultralytics import YOLO
 
 # -------------------------------
 # Handle resource paths
 # -------------------------------
 def resource_path(relative_path):
-    """Get absolute path to resource, works both for dev + PyInstaller exe"""
+    """Get absolute path to resource, works both for dev and PyInstaller exe"""
     if hasattr(sys, "_MEIPASS"):
         return os.path.join(sys._MEIPASS, relative_path)
     return os.path.join(os.path.abspath("."), relative_path)
@@ -53,9 +72,11 @@ st.write("Upload an image of a supermarket shelf, and the AI will detect missing
 uploaded_file = st.file_uploader("Upload Shelf Image", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
+    # Read and display uploaded image
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Shelf Image", use_container_width=True)
 
+    # Save to temp file for YOLO
     with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
         image.save(tmp_file.name)
         temp_path = tmp_file.name
@@ -63,11 +84,12 @@ if uploaded_file is not None:
     st.write("🔍 Running detection...")
     results = model.predict(source=temp_path, conf=0.4, save=False)
 
+    # Plot detections
     res_plotted = results[0].plot()  # numpy array (BGR)
-    res_rgb = Image.fromarray(res_plotted[..., ::-1])
-
+    res_rgb = Image.fromarray(res_plotted[..., ::-1])  # convert to RGB
     st.image(res_rgb, caption="AI Detection Result", use_container_width=True)
 
+    # Show counts
     counts = results[0].boxes.cls.cpu().numpy()
     names = model.names
     detected_classes = [names[int(c)] for c in counts]
