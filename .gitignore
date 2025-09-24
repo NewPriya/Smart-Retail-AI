@@ -129,3 +129,19 @@ __marimo__/
 
 # Outputs
 outputs/predictions/*
+
+# ---------------------------
+# Smart Retail AI specific
+# ---------------------------
+
+# YOLO models (downloaded from Hugging Face)
+models/
+*.pt
+
+# Streamlit cache/config
+.streamlit/
+.streamlit-cache/
+
+# Temp files
+*.tmp
+*.temp
