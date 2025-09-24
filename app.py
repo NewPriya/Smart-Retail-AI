@@ -3,6 +3,8 @@ import tempfile
 import numpy as np
 from PIL import Image
 from ultralytics import YOLO
+import requests
+import os
 
 # -------------------------------
 # Streamlit Page Config
@@ -12,12 +14,25 @@ st.title("🛒 Smart Retail AI - Shelf Monitoring")
 st.write("Upload an image of a supermarket shelf, and the AI will detect missing/misplaced products.")
 
 # -------------------------------
-# Load YOLO model (cached)
+# Load YOLO model (download from Hugging Face if missing)
 # -------------------------------
 @st.cache_resource
 def load_model():
-    model = YOLO("best.pt")  # Ensure "best.pt" is in your repo root or /models
-    return model
+    HF_URL = "https://huggingface.co/priyatech3031/smart-retail-yolo/resolve/main/best.pt"
+    local_path = "best.pt"
+
+    # Download only if not present locally
+    if not os.path.exists(local_path):
+        st.info("📥 Downloading model weights from Hugging Face... please wait (first run only).")
+        r = requests.get(HF_URL, stream=True)
+        r.raise_for_status()
+        with open(local_path, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+        st.success("✅ Model downloaded successfully!")
+
+    return YOLO(local_path)
 
 model = load_model()
 

@@ -10,12 +10,27 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
+import sys
+import torch
+import ultralytics
+
+# -----------------------
+# DEBUG INFO BANNER
+# -----------------------
+st.set_page_config(page_title="Smart Retail AI", layout="wide")
+
+st.sidebar.info(
+    f"🛠️ Debug Info\n\n"
+    f"- Python: {sys.version.split()[0]}\n"
+    f"- Torch: {torch.__version__}\n"
+    f"- Ultralytics: {ultralytics.__version__}"
+)
 
 # -----------------------
 # CONFIGURE YOUR EMAIL
 # -----------------------
 SENDER_EMAIL = "priyadarshini985@gmail.com"
-APP_PASSWORD = "pzdr yajs agjq xlqh"
+APP_PASSWORD = "pzdr yajs agjq xlqh"  # ⚠️ better move to st.secrets
 RECEIVER_EMAIL = "aruncorp01@gmail.com"
 SMTP_SERVER, SMTP_PORT = "smtp.gmail.com", 587
 
@@ -43,7 +58,7 @@ def send_email_alert(store, product, count, threshold):
     msg.attach(MIMEText(body, "plain"))
 
     try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
         server.starttls()
         server.login(SENDER_EMAIL, APP_PASSWORD)
         server.sendmail(SENDER_EMAIL, RECEIVER_EMAIL, msg.as_string())
@@ -53,15 +68,18 @@ def send_email_alert(store, product, count, threshold):
         st.error(f"Email sending failed: {e}")
 
 # -----------------------
-# YOLO MODEL
+# YOLO MODEL (safe load)
 # -----------------------
-model = YOLO("models/best.pt")
+model = None
+try:
+    model = YOLO("models/best.pt")  # or "best.pt" if not in models/
+except Exception as e:
+    st.error(f"❌ Could not load YOLO model: {e}")
+    st.warning("Dashboard is running, but detections are disabled.")
 
 # -----------------------
 # STREAMLIT CONFIG
 # -----------------------
-st.set_page_config(page_title="Smart Retail AI", layout="wide")
-
 st.title("🛒 Smart Retail AI - Multi-Store Dashboard")
 st.write("Monitor stock levels, get alerts, and download reports per store.")
 
@@ -87,7 +105,12 @@ use_webcam = st.checkbox("📹 Use Webcam")
 if "history" not in st.session_state:
     st.session_state["history"] = {store: [] for store in stores}
 
+# -----------------------
+# HELPERS
+# -----------------------
 def process_frame(frame):
+    if model is None:
+        return frame, {}
     results = model(frame)
     frame = results[0].plot()
     names = results[0].names
